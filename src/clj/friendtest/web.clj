@@ -27,7 +27,7 @@
 
 (def pagelinks
   [:nav.navbar.navbar-dark.bg-dark.navbar-expand-lg
-    [:div 
+    [:div.container 
       [:ul.navbar-nav.mr-auto
         [:li.nav-item [:a.nav-link {:href "/"} "Home"]]
         [:li.nav-item [:a.nav-link {:href "/user/profile"} "My Profile"]]
@@ -66,10 +66,16 @@
         [:body
           pagelinks
           [:div.container
-            (if-let [identity (friend/identity req)]
-              (apply str "Logged in, with these roles: " (-> identity friend/current-authentication :roles))
-                "anonymous user")
-            ]])))
+            [:div.row (if-let [identity (friend/identity req)]
+                            (apply str "Logged in, with these roles: " (-> identity friend/current-authentication :roles))
+                            "anonymous user")]
+            [:div.row
+              (if (friend/authorized? #{::admin} (friend/identity req)) 
+                [:p "Hello Admin"]
+                [:p "You're Not Admin"])]
+            [:div.row
+              (if (friend/authorized? #{::user} (friend/identity req)) [:p "You're a user"])]
+          ]])))
   (context "/admin" req
     (friend/wrap-authorize admin-routes #{::admin}))
   (GET "/login" req
@@ -88,7 +94,9 @@
                 [:div.form-group
                   [:label {:for "password"} "Password"]
                   [:input#userpassword.form-control {:type "password" :name "password" :placeholder "Password"}]]
-                [:button.btn.btn-warning.float-right {:type "submit"} "Login"]]]]
+                [:div.form-group
+                  [:label.text-danger (if (= "Y" (-> req :params :login_failed)) (str "Login failed for username " (-> req :params :username)))]
+                  [:button.btn.btn-warning.float-right {:type "submit"} "Login"]]]]]
           ]]))
   (friend/logout
     (ANY "/logout" [] (redirect "/")))
@@ -104,7 +112,8 @@
        :unauthorized-handler #(-> (h/html5 misc/pretty-head [:body pagelinks [:div.container [:h3 "Access Denied: " (:uri %)]]])
                                   response
                                   (status 401))
-       :credential-fn #(creds/bcrypt-credential-fn users %)
+       ;; :credential-fn #(creds/bcrypt-credential-fn users %)
+       :credential-fn (partial creds/bcrypt-credential-fn users)
        :workflows [(interactive-form)]})
     (wrap-keyword-params)
     (wrap-params)
