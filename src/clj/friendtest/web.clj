@@ -25,29 +25,29 @@
                   
 (derive ::admin ::user)
 
-(def pagelinks
+(defn pagelinks [req]
   [:nav.navbar.navbar-dark.bg-dark.navbar-expand-lg
     [:div.container 
       [:ul.navbar-nav.mr-auto
-        [:li.nav-item [:a.nav-link {:href "/"} "Home"]]
-        [:li.nav-item [:a.nav-link {:href "/user/profile"} "My Profile"]]
-        [:li.nav-item [:a.nav-link {:href "/admin/user"} "User Admin"]]
-        [:li.nav-item [:a.nav-link {:href "/admin/db"} "DB Admin"]]
+        [:li.nav-item {:class (if (= "/" (:uri req)) "active")} [:a.nav-link {:href "/"} "Home"]]
+        [:li.nav-item {:class (if (= "/user/profile" (:uri req)) "active")} [:a.nav-link {:href "/user/profile"} "My Profile"]]
+        [:li.nav-item {:class (if (= "/admin/user" (:uri req)) "active")} [:a.nav-link {:href "/admin/user"} "User Admin"]]
+        [:li.nav-item {:class (if (= "/admin/db" (:uri req)) "active")} [:a.nav-link {:href "/admin/db"} "DB Admin"]]
         [:li.nav-item [:a.nav-link {:href "/logout"} "Logout"]]
     ]]])
 
 (defroutes admin-routes
-  (GET "/user" []
+  (GET "/user" req
     (h/html5
       misc/pretty-head
       [:body
-        pagelinks
+        (pagelinks req)
         [:div.container "User Admin"]]))
-  (GET "/db" []
+  (GET "/db" req
     (h/html5
       misc/pretty-head
       [:body
-        pagelinks
+        (pagelinks req)
         [:div.container "Database Admin"]]))
         )
     
@@ -56,15 +56,16 @@
     (h/html5
       misc/pretty-head
       [:body
-        pagelinks
+        (pagelinks req)
         [:div.container
+          (str req)
           ]]))
   (GET "/user/profile" req
     (friend/authorize #{::user}
       (h/html5
         misc/pretty-head
         [:body
-          pagelinks
+          (pagelinks req)
           [:div.container
             [:div.row (if-let [identity (friend/identity req)]
                             (apply str "Logged in, with these roles: " (-> identity friend/current-authentication :roles))
@@ -82,7 +83,7 @@
     (h/html5
       misc/pretty-head
       [:body
-        pagelinks
+        (pagelinks req)
         [:div.container
           [:div.card
             [:div.card-header "Login"]
@@ -109,7 +110,7 @@
       {:allow-anon? true
        :login-uri "/login"
        :default-landing-uri "/"
-       :unauthorized-handler #(-> (h/html5 misc/pretty-head [:body pagelinks [:div.container [:h3 "Access Denied: " (:uri %)]]])
+       :unauthorized-handler #(-> (h/html5 misc/pretty-head [:body (pagelinks %) [:div.container [:h3 "Access Denied: " (:uri %)]]])
                                   response
                                   (status 401))
        ;; :credential-fn #(creds/bcrypt-credential-fn users %)
