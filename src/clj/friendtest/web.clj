@@ -7,24 +7,14 @@
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
             [ring.middleware.nested-params :refer [wrap-nested-params]]
             [ring.middleware.session :refer [wrap-session]]
-            [clojure.java.jdbc :as j]
             [cemerick.friend :as friend]
-            [cemerick.friend.workflows :refer [make-auth interactive-form]]
-            [cemerick.friend.credentials :as creds]
+              (cemerick.friend [workflows :as workflows]
+                               [credentials :as creds])
             [hiccup.page :as h]
             [hiccup.element :as e]
-            [friendtest.misc :as misc]))
-           
-; a dummy in-memory user "database"
-(def users {"root" {:username "root"
-                  :password (creds/hash-bcrypt "admin")
-                  :roles #{::admin}}
-           "dan"  {:username "dan"
-                  :password (creds/hash-bcrypt "user")
-                  :roles #{::user}}})
-                  
-(derive ::admin ::user)
-
+            [friendtest.misc :as misc]
+            [friendtest.users :as users :refer [users]]))
+            
 (defn pagelinks [req]
   [:nav.navbar.navbar-dark.bg-dark.navbar-expand-lg
     [:div.container 
@@ -42,7 +32,30 @@
       misc/pretty-head
       [:body
         (pagelinks req)
-        [:div.container "User Admin"]]))
+        [:div.list-group
+          (for [user @users]
+            [:div.list-group-item.justify-content-between
+              [:div.h5.mb-1 (str "Username: " (-> user (get 1) :username)) ]
+              [:div.form-check
+                [:input.form-check-input {:type "checkbox"}]
+                [:label.form-check-label "Admin"]]])
+          
+          [:div.list-group-item.d-flex.w-100.justify-content-between
+            [:form
+              [:div.row
+                [:div.col
+                  [:input.form-control {:type "text" :placeholder "UserName" :name "username"}]]
+                [:div.col
+                  [:input.form-control {:type "password" :placeholder "Password" :name "password"}]]
+                [:div.col
+                  [:input.form-control {:type "password" :placeholder "Password" :name "confirm"}]]
+                [:div.col
+                  [:div.form-check
+                    [:input.form-check-input {:type "checkbox"}]
+                    [:label.form-check-label "Admin"]]]
+                [:div.col
+                  [:button.btn.btn-primary {:type "submit"} "Add User"]]]]
+          ]]]))
   (GET "/db" req
     (h/html5
       misc/pretty-head
@@ -61,7 +74,7 @@
           (str req)
           ]]))
   (GET "/user/profile" req
-    (friend/authorize #{::user}
+    (friend/authorize #{::users/user}
       (h/html5
         misc/pretty-head
         [:body
@@ -71,14 +84,15 @@
                             (apply str "Logged in, with these roles: " (-> identity friend/current-authentication :roles))
                             "anonymous user")]
             [:div.row
-              (if (friend/authorized? #{::admin} (friend/identity req)) 
+              (if (friend/authorized? #{::users/admin} (friend/identity req)) 
                 [:p "Hello Admin"]
                 [:p "You're Not Admin"])]
             [:div.row
-              (if (friend/authorized? #{::user} (friend/identity req)) [:p "You're a user"])]
+              (if (friend/authorized? #{::users/user} (friend/identity req)) [:p "You're a user"])]
           ]])))
   (context "/admin" req
-    (friend/wrap-authorize admin-routes #{::admin}))
+    admin-routes)
+    ;; (friend/wrap-authorize admin-routes #{::users/admin}))
   (GET "/login" req
     (h/html5
       misc/pretty-head
@@ -95,6 +109,9 @@
                 [:div.form-group
                   [:label {:for "password"} "Password"]
                   [:input#userpassword.form-control {:type "password" :name "password" :placeholder "Password"}]]
+                ;;[:div.form-check
+                ;;  [:input#rememberme.form-check-input {:type "checkbox"}]
+                ;;  [:label.form-check-label {:for "rememberme"} "Remember me."]]
                 [:div.form-group
                   [:label.text-danger (if (= "Y" (-> req :params :login_failed)) (str "Login failed for username " (-> req :params :username)))]
                   [:button.btn.btn-warning.float-right {:type "submit"} "Login"]]]]]
@@ -113,11 +130,10 @@
        :unauthorized-handler #(-> (h/html5 misc/pretty-head [:body (pagelinks %) [:div.container [:h3 "Access Denied: " (:uri %)]]])
                                   response
                                   (status 401))
-       ;; :credential-fn #(creds/bcrypt-credential-fn users %)
-       :credential-fn (partial creds/bcrypt-credential-fn users)
-       :workflows [(interactive-form)]})
+       :credential-fn #(creds/bcrypt-credential-fn @users %)
+       ;; :credential-fn (partial creds/bcrypt-credential-fn users)
+       :workflows [(workflows/interactive-form)]})
     (wrap-keyword-params)
     (wrap-params)
-    (wrap-session)
-    ))
+    (wrap-session)))
    
