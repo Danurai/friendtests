@@ -2,7 +2,8 @@
    (:gen-class)
    (:require [org.httpkit.server :refer [run-server]]
             [com.stuartsierra.component :as component]
-            [friendtest.web :refer [app]]))
+            [friendtest.web :refer [app]]
+            [friendtest.users :as schema :refer [migrate]]))
 
 (defn- start-server [handler port]
   (let [server (run-server handler {:port port})]
@@ -22,7 +23,8 @@
     (dissoc this :server)))
 
 (defn create-system []
+  (schema/migrate)
   (AppRecord.))
 
-(defn -main [& args]   
+(defn -main [& args]
   (.start (create-system)))
