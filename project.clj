@@ -24,6 +24,7 @@
                [com.cemerick/friend "0.2.3"]
                [org.clojure/java.jdbc "0.7.5"]
                [org.xerial/sqlite-jdbc "3.7.2"]
+               [org.postgresql/postgresql "9.4-1201-jdbc41"]
                [hiccup "1.0.5"]]
 
   :plugins [[lein-figwheel "0.5.14"]
