@@ -63,5 +63,5 @@
       (map (fn [x]
           {(:username x) (-> x 
                             (dissoc :admin)
-                            (assoc :roles (if (= 1 (:admin x)) #{::admin} #{::user})))}))
+                            (assoc :roles (if (:admin x) #{::admin} #{::user})))}))
       (into {})))
